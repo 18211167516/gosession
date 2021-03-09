@@ -1,25 +1,35 @@
 package gosession
 
-import "sync"
+import (
+	"net/http"
+)
 
 type Session struct {
-	cookieName  string
-	lock        sync.Mutex
-	store       StoreInterface
-	maxlifetime int
+	ID      string
+	store   StoreInterface
+	mamager *Manager
+	ttl     int
 }
 
-type StoreInterface interface {
-	//初始化session 返回新的session变量
-	SessionInt(sid string) (Session, error)
-	//返回sid对应的Session变量
-	SessionGet(sid string) (Session, error)
-	SessionDestory(sid string) error
+func (s *Session) DestroySession(w http.ResponseWriter, r *http.Request) {
+	cookie := http.Cookie{
+		Name:   s.mamager.CookieName,
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	}
+
+	http.SetCookie(w, &cookie)
 }
 
-type SessionInterface interface {
-	Set(key string, value interface{}) error
-	Get(key string) interface{}
-	Delete(key string) error
-	SessionId() string
+func (s *Session) Set(key string, value interface{}) error {
+	return s.store.Set(s.ID, key, value, s.ttl)
+}
+
+func (s *Session) Get(key string) (interface{}, error) {
+	return s.store.Get(s.ID, key)
+}
+
+func (s *Session) Delete(key string) error {
+	return s.store.Remove(s.ID, key)
 }
